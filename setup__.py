@@ -84,13 +84,9 @@ class Database():
 		return row_list
 
 	def modifyRow(self, old_service, service, user, password, extra, card):
-<<<<<<< HEAD:setup__.py
-		self.cursor.execute('UPDATE passwords SET service=?, user=?, password=?, extra=?, card=? WHERE service=?', (service, user, password, extra, card, old_service))
-=======
 		self.cursor.execute('DELETE from claves where service = %s', (old_service,))
 		self.connect.commit()
 		self.cursor.execute('INSERT INTO claves VALUES (%s, %s, %s, %s, %s)', (service, user, password, extra, card))
->>>>>>> af310c010964dd661af1990e6c30ae5f52956294:setup.py
 		self.connect.commit()
 
 	def addRow(self, service, user, password, extra, card):
@@ -239,14 +235,7 @@ class Main(wx.Frame):
 			wx.MessageDialog(None, f'{service} modificado correctamente', '✌').ShowModal()
 
 	def onDelete(self, event):
-<<<<<<< HEAD:setup__.py
-		selected_element= self.listbox.GetStringSelection()
-		dlg= wx.MessageDialog(None, '¿Seguro que quieres eliminar {}?'.format(selected_element), 'Atención', wx.YES_NO | wx.ICON_QUESTION)
-		if dlg.ShowModal() == wx.ID_NO: return
-		database.cursor.execute('DELETE from passwords where service=?', (selected_element,))
-=======
 		database.cursor.execute('DELETE from claves where service = %s', (self.listbox.GetStringSelection(),))
->>>>>>> af310c010964dd661af1990e6c30ae5f52956294:setup.py
 		database.connect.commit()
 		current_selection= self.listbox.GetSelection()
 		if current_selection != wx.NOT_FOUND:
