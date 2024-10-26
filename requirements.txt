@@ -7,4 +7,3 @@ pywin32==306
 winshell==0.6
 wxPython==4.2.1
 pyinstaller==6.3.0
->>>>>>> af310c010964dd661af1990e6c30ae5f52956294
