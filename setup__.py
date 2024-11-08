@@ -5,12 +5,11 @@ import wx
 import ctypes
 from platform import machine
 from cryptography.fernet import Fernet, InvalidToken
-from cryptography.hazmat.backends import default_backend
-from cryptography.hazmat.primitives import hashes
 from base64 import b64encode
+from hashlib import sha256
 from mysql.connector import connect
 import os
-from json import load
+from pickle import load
 import sys
 from win32com.client import Dispatch
 from shutil import copy
@@ -44,9 +43,9 @@ def processVerify():
 
 # Función que devuelve el hash de una cadena
 def getHash(string):
-	hash_obj= hashes.Hash(hashes.SHA256(), backend= default_backend())
+	hash_obj= sha256()
 	hash_obj.update(string.encode())
-	return hash_obj.finalize()
+	return hash_obj
 
 class Crypto():
 
@@ -69,12 +68,13 @@ class Crypto():
 
 class Database():
 	def __init__(self):
-		with open('_internal/host', 'r') as file:
+		with open('_internal/host', 'rb') as file:
 			data= load(file)
 		self.connect= connect(
-			host= data['host'],
-			user= data['user'],
-			password= data['password'], database= data['database']
+			host= data[0],
+			user= data[1],
+			password= data[2],
+			database= data[3]
 		)
 		self.cursor= self.connect.cursor()
 
@@ -131,7 +131,7 @@ class Main(wx.Frame):
 			new_dialog= PassDialog(self, 'Registrar contraseña de acceso', 'Ingresa una contraseña de acceso', '&Guardar y continuar', '&Cancelar', False)
 			if new_dialog.ShowModal() == wx.ID_OK:
 				new_pass= getHash(new_dialog.password_field.GetValue())
-				cipher= Fernet(b64encode(new_pass))
+				cipher= Fernet(b64encode(new_pass.digest()))
 				database.cursor.execute('INSERT INTO claves VALUES(%s, %s, %s, %s, %s)', ('Servicio de prueba', cipher.encrypt('gera.ar'.encode()), cipher.encrypt('1234'.encode()), cipher.encrypt('Datos extra'.encode()), 0))
 				database.connect.commit()
 				wx.MessageDialog(None, 'Clave guardada exitosamente. Reinicia el programa', '👍').ShowModal()
@@ -142,17 +142,18 @@ class Main(wx.Frame):
 		login= pass_dialog.ShowModal()
 		if login == wx.ID_CANCEL:
 			if wx.MessageDialog(None, '¿Seguro que quieres resetear la base de datos?', 'Atención', wx.YES_NO | wx.NO_DEFAULT | wx.ICON_QUESTION).ShowModal() == wx.ID_YES:
-				database.cursor.execute('DELETE FROM claves')
-				database.connect.commit()
-				database.connect.close()
-				wx.MessageDialog(None, 'La base de datos ha sido reseteada correctamente', '👍').ShowModal()
+				if wx.MessageDialog(None, '¿Seguro seguro? Esta acción no se puede deshacer...', '¡Cuidado!', wx.YES_NO | wx.NO_DEFAULT | wx.ICON_QUESTION).ShowModal() == wx.ID_YES:
+					database.cursor.execute('DELETE FROM claves')
+					database.connect.commit()
+					database.connect.close()
+					wx.MessageDialog(None, 'La base de datos ha sido reseteada correctamente', '👍').ShowModal()
 			self.Destroy()
 			return False
 		try:
 			user= getHash(pass_dialog.password_field.GetValue())
 		except RuntimeError:
 			return False
-		crypto= Crypto(b64encode(user))
+		crypto= Crypto(b64encode(user.digest()))
 		database.cursor.execute('SELECT * FROM claves')
 		if not crypto.decrypt(database.cursor.fetchall()[0][1]):
 			database.connect.close()
@@ -295,7 +296,7 @@ class Main(wx.Frame):
 			database.cursor.execute('SELECT * FROM claves')
 			rows= database.cursor.fetchall()
 			new_hash= getHash(pass_dialog.password_field.GetValue())
-			new_crypto= Crypto(b64encode(new_hash))
+			new_crypto= Crypto(b64encode(new_hash.digest()))
 			database.cursor.execute('DELETE FROM claves')
 			database.connect.commit()
 			for row in rows:
